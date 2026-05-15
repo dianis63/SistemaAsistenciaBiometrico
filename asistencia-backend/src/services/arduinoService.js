@@ -34,7 +34,15 @@ export async function procesarAsistencia(huella_id) {
 
   const { data: alumno } = await supabase.from('alumnos').select('*').eq('huella_id', huella_id).single()
   if (!alumno) throw new Error('Huella no registrada')
-
+  
+  const { data: inscripcion } = await supabase
+    .from('inscripciones')
+    .select('id')
+    .eq('alumno_id', alumno.id)
+    .eq('materia_id', sesion.materia_id)
+    .maybeSingle()
+  if (!inscripcion) throw new Error('Alumno no inscrito en esta materia')
+    
   const diff   = (new Date() - new Date(sesion.hora_inicio)) / 60000
   const estado = diff <= sesion.minutos_tolerancia ? 'presente' : 'tarde'
 
@@ -44,3 +52,4 @@ export async function procesarAsistencia(huella_id) {
   await supabase.from('asistencias').insert({ sesion_id: sesion.id, alumno_id: alumno.id, estado })
   return { alumno: alumno.nombre, estado, sesion_id: sesion.id }
 }
+
