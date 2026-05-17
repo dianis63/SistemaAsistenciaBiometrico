@@ -24,10 +24,14 @@ export async function getSesionActiva() {
 }
 
 export async function registrarHuella(alumno_id, huella_id) {
-  const { error } = await supabase.from('alumnos').update({ huella_id }).eq('id', alumno_id)
+  console.log('registrarHuella llamado con:', alumno_id, huella_id, typeof alumno_id, typeof huella_id)
+  const { data, error } = await supabase
+    .from('alumnos')
+    .update({ huella_id: parseInt(huella_id) })
+    .eq('id', parseInt(alumno_id))
+  console.log('resultado update:', data, error)
   if (error) throw new Error(error.message)
 }
-
 export async function procesarAsistencia(huella_id) {
   const sesion = await getActiva()
   if (!sesion) throw new Error('No hay sesión activa')
