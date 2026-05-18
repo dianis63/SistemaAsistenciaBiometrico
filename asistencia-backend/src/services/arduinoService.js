@@ -1,7 +1,6 @@
 import { supabase } from '../db.js'
 import { getActiva } from './sesionesService.js'
 
-// src/services/arduinoService.js
 export async function getComando() {
   const { data, error } = await supabase
     .from('comandos')
@@ -9,7 +8,7 @@ export async function getComando() {
     .eq('ejecutado', false)
     .order('creado_at')
     .limit(1)
-    .maybeSingle()   // ← maybeSingle en vez de single, devuelve null si no hay
+    .maybeSingle()
   if (error) throw new Error(error.message)
   return data || null
 }
@@ -24,21 +23,20 @@ export async function getSesionActiva() {
 }
 
 export async function registrarHuella(alumno_id, huella_id) {
-  console.log('registrarHuella llamado con:', alumno_id, huella_id, typeof alumno_id, typeof huella_id)
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from('alumnos')
     .update({ huella_id: parseInt(huella_id) })
     .eq('id', parseInt(alumno_id))
-  console.log('resultado update:', data, error)
   if (error) throw new Error(error.message)
 }
+
 export async function procesarAsistencia(huella_id) {
   const sesion = await getActiva()
   if (!sesion) throw new Error('No hay sesión activa')
 
   const { data: alumno } = await supabase.from('alumnos').select('*').eq('huella_id', huella_id).single()
   if (!alumno) throw new Error('Huella no registrada')
-  
+
   const { data: inscripcion } = await supabase
     .from('inscripciones')
     .select('id')
@@ -46,14 +44,13 @@ export async function procesarAsistencia(huella_id) {
     .eq('materia_id', sesion.materia_id)
     .maybeSingle()
   if (!inscripcion) throw new Error('Alumno no inscrito en esta materia')
-    
+
   const diff   = (new Date() - new Date(sesion.hora_inicio)) / 60000
   const estado = diff <= sesion.minutos_tolerancia ? 'presente' : 'tarde'
 
-  const { data: existe } = await supabase.from('asistencias').select('id').eq('sesion_id', sesion.id).eq('alumno_id', alumno.id).single()
-  if (existe) throw new Error('Ya registrado en esta sesión')
+  const { data: existe } = await supabase.from('asistencias').select('id').eq('sesion_id', sesion.id).eq('alumno_id', alumno.id).maybeSingle()
+  if (existe) throw new Error('Ya tiene asistencia')
 
   await supabase.from('asistencias').insert({ sesion_id: sesion.id, alumno_id: alumno.id, estado })
   return { alumno: alumno.nombre, estado, sesion_id: sesion.id }
 }
-
